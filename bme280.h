@@ -11,6 +11,7 @@ BME280I2C bme;
 void setupBme() {
 
   Wire.begin(D2, D1);
+  Wire.setClockStretchLimit(1500); 
 
   while(!bme.begin())
   {

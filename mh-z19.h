@@ -1,51 +1,47 @@
 #define MH_Z19_RX D7
-#define MH_Z19_TX D8
+#define MH_Z19_TX D6
 
+#include "MHZ19.h"       
 #include <SoftwareSerial.h>
+
+MHZ19 myMHZ19;        
 
 SoftwareSerial co2Serial(MH_Z19_RX, MH_Z19_TX); // define MH-Z19
 
 int readCo2()
 {
+    int ppm;
 
-  byte cmd[9] = {0xFF, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79};
-  // command to ask for data
-  byte response[9]; // for answer
+    ppm = myMHZ19.getCO2(false);                             // Request CO2 (as ppm)
 
-  co2Serial.write(cmd, 9); //request PPM CO2
-
-  // The serial stream can get out of sync. The response starts with 0xff, try to resync.
-  while (co2Serial.available() > 0 && (unsigned char)co2Serial.peek() != 0xFF) {
-    co2Serial.read();
-  }
-
-  memset(response, 0, 9);
-  co2Serial.readBytes(response, 9);
-
-  if (response[1] != 0x86)
-  {
-    Serial.println("Invalid response from co2 sensor!");
-    return -1;
-  }
-
-  byte crc = 0;
-  for (int i = 1; i < 8; i++) {
-    crc += response[i];
-  }
-  crc = 255 - crc + 1;
-
-  if (response[8] == crc) {
-    int responseHigh = (int) response[2];
-    int responseLow = (int) response[3];
-    int ppm = (256 * responseHigh) + responseLow;
+    int8_t Temp;
+    Temp = myMHZ19.getTemperature();                     // Request Temperature (as Celsius)
+    Serial.print("Temperature (C): ");                  
+    Serial.println(Temp);            
     return ppm;
-  } else {
-    Serial.println("CRC error!");
-    return -1;
-  }
+
 }
 
 void setupCo2() {
-  co2Serial.begin(9600); //Init sensor MH-Z19(14)
-}
+  co2Serial.begin(9600,SWSERIAL_8N1, MH_Z19_RX, MH_Z19_TX); //Init sensor MH-Z19(14)
+  myMHZ19.begin(co2Serial);                                // *Serial(Stream) refence must be passed to library begin(). 
+  myMHZ19.autoCalibration(false);                              // Turn auto calibration ON (OFF autoCalibration(false))
 
+  char myVersion[4];          
+  myMHZ19.getVersion(myVersion);
+
+  Serial.print("\nFirmware Version: ");
+  for(byte i = 0; i < 4; i++)
+  {
+    Serial.print(myVersion[i]);
+    if(i == 1)
+      Serial.print(".");    
+  }
+   Serial.println("");
+   Serial.print("Range: ");
+   Serial.println(myMHZ19.getRange());   
+   Serial.print("Background CO2: ");
+   Serial.println(myMHZ19.getBackgroundCO2());
+   Serial.print("Temperature Cal: ");
+   Serial.println(myMHZ19.getTempAdjustment());
+}
